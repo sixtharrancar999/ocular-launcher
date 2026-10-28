@@ -21,9 +21,10 @@ use crate::util;
 const MODEL_FILE: &str = "model";
 const CLASSIC: &str = "classic";
 const SLIM: &str = "slim";
-const PACK_FILE: &str = "ocular-skin.zip";
-const PACK_ENTRY: &str = "file/ocular-skin.zip";
-const PACK_FORMAT: i64 = 97;
+const TEXTURE_BACKUP: &str = ".ocular-skin-backup";
+const TEXTURE_MARKER: &str = ".ocular-skin.sha1";
+const LEGACY_PACK: &str = "ocular-skin.zip";
+const LEGACY_ENTRY: &str = "file/ocular-skin.zip";
 const SKIN_NAMES: [&str; 9] = [
     "alex", "ari", "efe", "kai", "makena", "noor", "steve", "sunny", "zuri",
 ];
@@ -196,84 +197,125 @@ pub fn appearance_for(home: &Path, nickname: &str) -> Option<GameAppearance> {
 }
 
 /// Horizon 0.2.93 does not read the offline-skin variables yet, so the local skin is
-/// also installed as a resource pack that overrides vanilla's default player textures.
-/// The pack is added to `options.txt`; the game reloads it on the next start.
-pub fn sync_resource_pack(home: &Path, nickname: &str) -> Result<(), String> {
-    let pack = home.join("resourcepacks").join(PACK_FILE);
+/// written into the prepared default player textures of the selected version. A resource
+/// pack would work too, but the game rebuilds its whole overlay cache for one, which is a
+/// very long black screen on the first launch; copying 18 small PNGs is instant.
+pub fn sync_prepared_skin(
+    home: &Path,
+    nickname: &str,
+    resources: &Path,
+) -> Result<(), String> {
+    let textures = resources
+        .join("assets")
+        .join("minecraft")
+        .join("textures")
+        .join("entity")
+        .join("player");
+    if !textures.is_dir() {
+        return Ok(());
+    }
+    remove_legacy_pack(home);
+
+    let backup = resources.join(TEXTURE_BACKUP);
+    let marker = resources.join(TEXTURE_MARKER);
     let skin = skin_path(home, nickname);
     if !skin.is_file() {
-        if pack.exists() {
-            let _ = std::fs::remove_file(&pack);
-        }
-        return set_pack_enabled(home, false);
+        restore_textures(&backup, &textures)?;
+        let _ = std::fs::remove_file(&marker);
+        return Ok(());
     }
-    write_skin_pack(&pack, &skin)?;
-    set_pack_enabled(home, true)
-}
 
-fn write_skin_pack(pack: &Path, skin: &Path) -> Result<(), String> {
-    use std::io::Write;
-
-    if let Some(parent) = pack.parent() {
-        std::fs::create_dir_all(parent).map_err(|e| e.to_string())?;
+    let fingerprint = util::sha1_file(&skin)?;
+    let current = std::fs::read_to_string(&marker).ok();
+    // The marker alone is not enough: a re-prepare can put the vanilla textures back.
+    let applied = std::fs::read(textures.join("wide").join("steve.png"))
+        .ok()
+        .map(|bytes| util::sha1_bytes(&bytes))
+        .as_deref()
+        == Some(fingerprint.as_str());
+    if applied && backup.is_dir() && current.as_deref().map(str::trim) == Some(fingerprint.as_str())
+    {
+        return Ok(());
     }
-    let bytes = std::fs::read(skin).map_err(|e| e.to_string())?;
-    let file = std::fs::File::create(pack).map_err(|e| e.to_string())?;
-    let mut zip = zip::ZipWriter::new(file);
-    let options = zip::write::SimpleFileOptions::default()
-        .compression_method(zip::CompressionMethod::Deflated);
-    zip.start_file("pack.mcmeta", options)
-        .map_err(|e| e.to_string())?;
-    let meta = format!(
-        "{{\"pack\":{{\"pack_format\":{PACK_FORMAT},\"description\":\"Ocular local skin\"}}}}"
-    );
-    zip.write_all(meta.as_bytes()).map_err(|e| e.to_string())?;
+    backup_textures(&textures, &backup)?;
+    let bytes = std::fs::read(&skin).map_err(|e| e.to_string())?;
     for model in ["wide", "slim"] {
         for name in SKIN_NAMES {
-            let path = format!("assets/minecraft/textures/entity/player/{model}/{name}.png");
-            zip.start_file(path, options).map_err(|e| e.to_string())?;
-            zip.write_all(&bytes).map_err(|e| e.to_string())?;
+            let path = textures.join(model).join(format!("{name}.png"));
+            if let Some(parent) = path.parent() {
+                std::fs::create_dir_all(parent).map_err(|e| e.to_string())?;
+            }
+            std::fs::write(path, &bytes).map_err(|e| e.to_string())?;
         }
     }
-    zip.finish().map_err(|e| e.to_string())?;
+    std::fs::write(&marker, &fingerprint).map_err(|e| e.to_string())
+}
+
+fn backup_textures(textures: &Path, backup: &Path) -> Result<(), String> {
+    for model in ["wide", "slim"] {
+        for name in SKIN_NAMES {
+            let source = textures.join(model).join(format!("{name}.png"));
+            let destination = backup.join(model).join(format!("{name}.png"));
+            // The first backup is the vanilla texture; later skins must not overwrite it.
+            if destination.exists() || !source.is_file() {
+                continue;
+            }
+            if let Some(parent) = destination.parent() {
+                std::fs::create_dir_all(parent).map_err(|e| e.to_string())?;
+            }
+            std::fs::copy(&source, &destination).map_err(|e| e.to_string())?;
+        }
+    }
     Ok(())
 }
 
-/// Adds (or removes) the pack in `resourcePacks`, keeping every other option untouched.
-fn set_pack_enabled(home: &Path, enabled: bool) -> Result<(), String> {
-    let path = home.join("options.txt");
-    if !path.exists() && !enabled {
+fn restore_textures(backup: &Path, textures: &Path) -> Result<(), String> {
+    if !backup.is_dir() {
         return Ok(());
     }
-    let mut lines: Vec<String> = std::fs::read_to_string(&path)
-        .unwrap_or_default()
-        .lines()
-        .map(str::to_string)
-        .collect();
+    for model in ["wide", "slim"] {
+        for name in SKIN_NAMES {
+            let source = backup.join(model).join(format!("{name}.png"));
+            if !source.is_file() {
+                continue;
+            }
+            let destination = textures.join(model).join(format!("{name}.png"));
+            std::fs::copy(&source, &destination).map_err(|e| e.to_string())?;
+        }
+    }
+    let _ = std::fs::remove_dir_all(backup);
+    Ok(())
+}
+
+/// Earlier builds added a resource pack to `options.txt`; take it out again.
+fn remove_legacy_pack(home: &Path) {
+    let dir = home.join("resourcepacks");
+    let _ = std::fs::remove_file(dir.join(LEGACY_PACK));
+    let _ = std::fs::remove_file(dir.join("ocular-skin.sha1"));
+    let path = home.join("options.txt");
+    let Ok(original) = std::fs::read_to_string(&path) else {
+        return;
+    };
+    let mut lines: Vec<String> = original.lines().map(str::to_string).collect();
     let mut found = false;
     for line in lines.iter_mut() {
         if let Some(rest) = line.strip_prefix("resourcePacks:") {
             let mut list: Vec<String> = serde_json::from_str(rest.trim()).unwrap_or_default();
-            list.retain(|entry| entry != PACK_ENTRY);
-            if enabled {
-                list.push(PACK_ENTRY.to_string());
+            let length = list.len();
+            list.retain(|entry| entry != LEGACY_ENTRY);
+            if list.len() != length {
+                *line = format!(
+                    "resourcePacks:{}",
+                    serde_json::to_string(&list).unwrap_or_else(|_| "[]".to_string())
+                );
+                found = true;
             }
-            *line = format!(
-                "resourcePacks:{}",
-                serde_json::to_string(&list).map_err(|e| e.to_string())?
-            );
-            found = true;
         }
     }
-    if enabled && !found {
-        lines.push(format!("resourcePacks:[\"vanilla\",\"{PACK_ENTRY}\"]"));
+    if found {
+        let text = format!("{}\n", lines.join("\n"));
+        let _ = std::fs::write(path, text);
     }
-    let text = if lines.is_empty() {
-        String::new()
-    } else {
-        format!("{}\n", lines.join("\n"))
-    };
-    std::fs::write(path, text).map_err(|e| e.to_string())
 }
 
 fn appearance(home: &Path, nickname: &str) -> Appearance {
@@ -448,7 +490,10 @@ pub fn appearance_reset(app: AppHandle) -> Result<(), String> {
     if dir.exists() {
         std::fs::remove_dir_all(&dir).map_err(|e| e.to_string())?;
     }
-    let _ = sync_resource_pack(&home, &settings.nickname);
+    if let Some(tag) = Settings::load().selected_version {
+        let resources = crate::paths::resources_dir(&tag);
+        let _ = sync_prepared_skin(&home, &settings.nickname, &resources);
+    }
     emit_changed(&app);
     Ok(())
 }
@@ -600,31 +645,31 @@ mod tests {
     }
 
     #[test]
-    fn the_resource_pack_covers_every_default_skin() {
+    fn prepared_textures_carry_the_skin_and_restore() {
         let home = home();
-        save_skin(&home, "Player", &png(64, 64), None).unwrap();
-        sync_resource_pack(&home, "Player").unwrap();
-
-        let pack = home.join("resourcepacks/ocular-skin.zip");
-        assert!(pack.is_file());
-        let mut archive = zip::ZipArchive::new(std::fs::File::open(&pack).unwrap()).unwrap();
-        assert!(archive.by_name("pack.mcmeta").is_ok());
-        assert_eq!(archive.len(), 1 + SKIN_NAMES.len() * 2);
+        let resources = home.join("resources");
+        let textures = resources.join("assets/minecraft/textures/entity/player");
         for model in ["wide", "slim"] {
             for name in SKIN_NAMES {
-                let path = format!("assets/minecraft/textures/entity/player/{model}/{name}.png");
-                assert!(archive.by_name(&path).is_ok(), "{path}");
+                let path = textures.join(model).join(format!("{name}.png"));
+                std::fs::create_dir_all(path.parent().unwrap()).unwrap();
+                std::fs::write(&path, format!("vanilla-{model}-{name}")).unwrap();
             }
         }
 
-        let options = std::fs::read_to_string(home.join("options.txt")).unwrap();
-        assert!(options.contains("file/ocular-skin.zip"));
+        save_skin(&home, "Player", &png(64, 64), None).unwrap();
+        sync_prepared_skin(&home, "Player", &resources).unwrap();
+        let steve = std::fs::read(textures.join("wide/steve.png")).unwrap();
+        assert_eq!(steve, png(64, 64));
+        assert!(resources.join(TEXTURE_BACKUP).is_dir());
 
         std::fs::remove_file(home.join("skins/Player/skin.png")).unwrap();
-        sync_resource_pack(&home, "Player").unwrap();
-        assert!(!pack.exists());
-        let options = std::fs::read_to_string(home.join("options.txt")).unwrap();
-        assert!(!options.contains("file/ocular-skin.zip"));
+        sync_prepared_skin(&home, "Player", &resources).unwrap();
+        assert_eq!(
+            std::fs::read_to_string(textures.join("wide/steve.png")).unwrap(),
+            "vanilla-wide-steve"
+        );
+        assert!(!resources.join(TEXTURE_BACKUP).exists());
 
         let _ = std::fs::remove_dir_all(&home);
     }
