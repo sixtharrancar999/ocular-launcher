@@ -57,6 +57,10 @@ export default function App() {
 
   useEffect(() => {
     void useStore.getState().init();
+    const timer = window.setTimeout(() => {
+      void useStore.getState().checkLauncherUpdate(false);
+    }, 4000);
+    return () => window.clearTimeout(timer);
   }, []);
 
   useEffect(() => {

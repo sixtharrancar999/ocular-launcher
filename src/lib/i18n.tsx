@@ -55,6 +55,10 @@ const ru = {
   "hero.hint.needVersion": "Установите версию Horizon, чтобы начать.",
   "update.title": "Доступно обновление",
   "update.action": "Обновить",
+  "launcherUpdate.title": "Доступно обновление лаунчера",
+  "launcherUpdate.action": "Обновить лаунчер",
+  "launcherUpdate.latest": "У вас последняя версия лаунчера",
+  "launcherUpdate.downloading": "Загрузка обновления",
 
   "settings.title": "Настройки",
   "settings.subtitle": "Лаунчер, аккаунт и папки.",
@@ -85,6 +89,13 @@ const ru = {
   "settings.saved": "Настройки сохранены",
   "settings.about": "О лаунчере",
   "settings.version": "Версия лаунчера",
+  "settings.updates": "Обновления лаунчера",
+  "settings.currentVersion": "Текущая версия",
+  "settings.checkUpdates": "Проверить обновления",
+  "settings.updateChecking": "Проверка обновлений…",
+  "settings.upToDate": "Установлена последняя версия",
+  "settings.updateAvailable": "Доступна версия",
+  "settings.installUpdate": "Установить и перезапустить",
   "settings.notAffiliated":
     "Неофициальный проект. Не связан с Mojang или Microsoft. Для игры нужна своя копия Minecraft: Java Edition.",
 
@@ -169,6 +180,10 @@ const en: Record<Key, string> = {
   "hero.hint.needVersion": "Install a Horizon version to begin.",
   "update.title": "Update available",
   "update.action": "Update",
+  "launcherUpdate.title": "Launcher update available",
+  "launcherUpdate.action": "Update launcher",
+  "launcherUpdate.latest": "You have the latest launcher version",
+  "launcherUpdate.downloading": "Downloading update",
 
   "settings.title": "Settings",
   "settings.subtitle": "Launcher, account and folders.",
@@ -199,6 +214,13 @@ const en: Record<Key, string> = {
   "settings.saved": "Settings saved",
   "settings.about": "About",
   "settings.version": "Launcher version",
+  "settings.updates": "Launcher updates",
+  "settings.currentVersion": "Current version",
+  "settings.checkUpdates": "Check for updates",
+  "settings.updateChecking": "Checking for updates…",
+  "settings.upToDate": "You are up to date",
+  "settings.updateAvailable": "Available version",
+  "settings.installUpdate": "Install and restart",
   "settings.notAffiliated":
     "An unofficial project. Not affiliated with Mojang or Microsoft. Playing needs your own copy of Minecraft: Java Edition.",
 

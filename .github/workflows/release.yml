@@ -1,0 +1,48 @@
+name: Release
+
+# Building a release: bump the version in package.json / Cargo.toml / tauri.conf.json,
+# commit, then push a tag `vX.Y.Z` (or run this workflow manually).
+on:
+  workflow_dispatch:
+  push:
+    tags:
+      - "v*"
+
+permissions:
+  contents: write
+
+jobs:
+  windows:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - uses: dtolnay/rust-toolchain@stable
+
+      - uses: swatinem/rust-cache@v2
+        with:
+          workspaces: src-tauri
+
+      - name: Install frontend dependencies
+        run: npm ci
+
+      - name: Build and publish
+        uses: tauri-apps/tauri-action@v0
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          # The private key from `tauri signer generate`; its public half is in
+          # src-tauri/tauri.conf.json. Keep it only in this repository secret.
+          TAURI_SIGNING_PRIVATE_KEY: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY }}
+        with:
+          tagName: v__VERSION__
+          releaseName: "Ocular Launcher v__VERSION__"
+          releaseBody: "Ocular Launcher v__VERSION__. Установщик Windows и latest.json для самообновления."
+          releaseDraft: false
+          prerelease: false
+          includeUpdaterJson: true
+          args: --bundles nsis

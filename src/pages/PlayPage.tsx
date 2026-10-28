@@ -24,6 +24,16 @@ export function PlayPage() {
   const install = useStore((state) => state.install);
   const prepare = useStore((state) => state.prepare);
   const updateGame = useStore((state) => state.updateGame);
+  const launcherUpdate = useStore((state) => state.launcherUpdate);
+  const launcherUpdateDownloading = useStore(
+    (state) => state.launcherUpdateDownloading,
+  );
+  const launcherUpdateProgress = useStore(
+    (state) => state.launcherUpdateProgress,
+  );
+  const installLauncherUpdate = useStore(
+    (state) => state.installLauncherUpdate,
+  );
   const play = useStore((state) => state.play);
   const stop = useStore((state) => state.stop);
   const setPage = useStore((state) => state.setPage);
@@ -113,6 +123,30 @@ export function PlayPage() {
 
   return (
     <div className="play-page">
+      {launcherUpdate && (
+        <section className="update-banner launcher-update">
+          <div className="update-text">
+            <span className="update-title">{t("launcherUpdate.title")}</span>
+            <span className="update-sub">
+              v{boot?.appVersion ?? "—"} → v{launcherUpdate.version}
+            </span>
+          </div>
+          {launcherUpdateDownloading ? (
+            <span className="update-percent">
+              {t("launcherUpdate.downloading")} {Math.round(launcherUpdateProgress)}%
+            </span>
+          ) : (
+            <button
+              className="btn btn-primary btn-small"
+              onClick={() => void installLauncherUpdate()}
+            >
+              <IconDownload size={16} />
+              {t("launcherUpdate.action")}
+            </button>
+          )}
+        </section>
+      )}
+
       {updateAvailable && latest && !running && (
         <section className="update-banner">
           <div className="update-text">

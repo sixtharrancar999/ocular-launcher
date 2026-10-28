@@ -10,3 +10,7 @@ src-tauri/gen/schemas
 
 # Assets produced locally
 .local
+
+# Update signing keys never belong in the repository
+*.key
+*.key.pub

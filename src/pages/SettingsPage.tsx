@@ -2,7 +2,8 @@ import { useEffect, useState } from "react";
 import { useI18n } from "../lib/i18n";
 import { api } from "../lib/api";
 import { useStore } from "../lib/store";
-import { IconFolder } from "../components/Icons";
+import { IconFolder, IconRefresh } from "../components/Icons";
+import { Progress } from "../components/Progress";
 import type { Settings } from "../lib/types";
 
 export function SettingsPage() {
@@ -10,6 +11,26 @@ export function SettingsPage() {
   const boot = useStore((state) => state.boot);
   const saveSettings = useStore((state) => state.saveSettings);
   const showToast = useStore((state) => state.showToast);
+  const launcherUpdate = useStore((state) => state.launcherUpdate);
+  const launcherUpdateChecking = useStore(
+    (state) => state.launcherUpdateChecking,
+  );
+  const launcherUpdateChecked = useStore(
+    (state) => state.launcherUpdateChecked,
+  );
+  const launcherUpdateDownloading = useStore(
+    (state) => state.launcherUpdateDownloading,
+  );
+  const launcherUpdateProgress = useStore(
+    (state) => state.launcherUpdateProgress,
+  );
+  const launcherUpdateError = useStore((state) => state.launcherUpdateError);
+  const checkLauncherUpdate = useStore(
+    (state) => state.checkLauncherUpdate,
+  );
+  const installLauncherUpdate = useStore(
+    (state) => state.installLauncherUpdate,
+  );
   const [form, setForm] = useState<Settings | null>(null);
 
   useEffect(() => {
@@ -150,6 +171,54 @@ export function SettingsPage() {
           <FolderRow label={t("settings.folderLogs")} onClick={() => reveal("logs")} />
           <FolderRow label={t("settings.folderMinecraft")} onClick={() => reveal("minecraft")} />
         </div>
+      </section>
+
+      <section className="panel">
+        <h3 className="panel-title">{t("settings.updates")}</h3>
+        <div className="about-row">
+          <span>{t("settings.currentVersion")}</span>
+          <span className="about-value">v{boot?.appVersion ?? "0.1.2"}</span>
+        </div>
+        <p className="field-hint">
+          {launcherUpdateChecking
+            ? t("settings.updateChecking")
+            : launcherUpdate
+              ? `${t("settings.updateAvailable")} v${launcherUpdate.version}`
+              : launcherUpdateChecked
+                ? t("settings.upToDate")
+                : ""}
+        </p>
+        <div className="update-actions">
+          <button
+            className="btn btn-ghost btn-small"
+            onClick={() => void checkLauncherUpdate(true)}
+            disabled={launcherUpdateChecking || launcherUpdateDownloading}
+          >
+            <IconRefresh
+              size={15}
+              className={launcherUpdateChecking ? "spin" : ""}
+            />
+            {t("settings.checkUpdates")}
+          </button>
+          {launcherUpdate && !launcherUpdateDownloading && (
+            <button
+              className="btn btn-primary btn-small"
+              onClick={() => void installLauncherUpdate()}
+            >
+              {t("settings.installUpdate")}
+            </button>
+          )}
+        </div>
+        {launcherUpdateDownloading && (
+          <Progress
+            label={t("launcherUpdate.downloading")}
+            detail={`${Math.round(launcherUpdateProgress)}%`}
+            value={launcherUpdateProgress}
+          />
+        )}
+        {launcherUpdateError && (
+          <p className="field-hint error-text">{launcherUpdateError}</p>
+        )}
       </section>
 
       <section className="panel">

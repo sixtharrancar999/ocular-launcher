@@ -1,4 +1,6 @@
 import { create } from "zustand";
+import { check } from "@tauri-apps/plugin-updater";
+import { relaunch } from "@tauri-apps/plugin-process";
 import { api } from "./api";
 import { translate, resolveLang } from "./i18n";
 import type {
@@ -14,6 +16,9 @@ import type {
 let nextLogId = 1;
 let nextToastId = 1;
 
+const inTauri =
+  typeof window !== "undefined" && "__TAURI_INTERNALS__" in window;
+
 interface Store {
   boot: Bootstrap | null;
   page: Page;
@@ -24,6 +29,12 @@ interface Store {
   logs: LogLine[];
   consoleOpen: boolean;
   toast: Toast | null;
+  launcherUpdate: { version: string; body: string } | null;
+  launcherUpdateChecking: boolean;
+  launcherUpdateChecked: boolean;
+  launcherUpdateDownloading: boolean;
+  launcherUpdateProgress: number;
+  launcherUpdateError: string | null;
 
   setPage: (page: Page) => void;
   setConsoleOpen: (open: boolean) => void;
@@ -38,6 +49,8 @@ interface Store {
   remove: (tag: string) => Promise<void>;
   select: (tag: string) => Promise<void>;
   saveSettings: (settings: Settings) => Promise<void>;
+  checkLauncherUpdate: (manual?: boolean) => Promise<void>;
+  installLauncherUpdate: () => Promise<void>;
   pushLog: (stream: LogLine["stream"], text: string) => void;
   clearLogs: () => void;
   showToast: (kind: Toast["kind"], text: string) => void;
@@ -54,6 +67,12 @@ export const useStore = create<Store>((set, get) => ({
   logs: [],
   consoleOpen: false,
   toast: null,
+  launcherUpdate: null,
+  launcherUpdateChecking: false,
+  launcherUpdateChecked: false,
+  launcherUpdateDownloading: false,
+  launcherUpdateProgress: 0,
+  launcherUpdateError: null,
 
   setPage: (page) => set({ page }),
   setConsoleOpen: (consoleOpen) => set({ consoleOpen }),
@@ -198,6 +217,77 @@ export const useStore = create<Store>((set, get) => ({
       await get().refresh();
       get().showToast("success", translate(currentLang(get()), "settings.saved"));
     } catch (error) {
+      get().showToast("error", String(error));
+    }
+  },
+
+  checkLauncherUpdate: async (manual = false) => {
+    if (!inTauri) {
+      return;
+    }
+    set({ launcherUpdateChecking: true, launcherUpdateError: null });
+    try {
+      const update = await check();
+      if (update) {
+        set({
+          launcherUpdate: { version: update.version, body: update.body ?? "" },
+          launcherUpdateChecked: true,
+        });
+      } else {
+        set({ launcherUpdate: null, launcherUpdateChecked: true });
+        if (manual) {
+          get().showToast(
+            "info",
+            translate(currentLang(get()), "launcherUpdate.latest"),
+          );
+        }
+      }
+    } catch (error) {
+      if (manual) {
+        set({ launcherUpdateError: String(error) });
+        get().showToast("error", String(error));
+      }
+    } finally {
+      set({ launcherUpdateChecking: false });
+    }
+  },
+
+  installLauncherUpdate: async () => {
+    if (!inTauri) {
+      return;
+    }
+    set({
+      launcherUpdateDownloading: true,
+      launcherUpdateProgress: 0,
+      launcherUpdateError: null,
+    });
+    try {
+      const update = await check();
+      if (!update) {
+        set({ launcherUpdateDownloading: false, launcherUpdate: null });
+        return;
+      }
+      let total = 0;
+      let received = 0;
+      await update.downloadAndInstall((event) => {
+        if (event.event === "Started") {
+          total = event.data.contentLength ?? 0;
+        } else if (event.event === "Progress") {
+          received += event.data.chunkLength;
+          set({
+            launcherUpdateProgress:
+              total > 0 ? Math.min(100, (received / total) * 100) : 0,
+          });
+        } else if (event.event === "Finished") {
+          set({ launcherUpdateProgress: 100 });
+        }
+      });
+      await relaunch();
+    } catch (error) {
+      set({
+        launcherUpdateError: String(error),
+        launcherUpdateDownloading: false,
+      });
       get().showToast("error", String(error));
     }
   },
