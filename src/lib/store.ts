@@ -26,6 +26,7 @@ interface Store {
   releases: Release[];
   releasesLoading: boolean;
   releasesError: string | null;
+  knownGameTags: string[];
   op: Operation | null;
   logs: LogLine[];
   consoleOpen: boolean;
@@ -73,6 +74,7 @@ export const useStore = create<Store>((set, get) => ({
   releases: [],
   releasesLoading: false,
   releasesError: null,
+  knownGameTags: [],
   op: null,
   logs: [],
   consoleOpen: false,
@@ -95,6 +97,10 @@ export const useStore = create<Store>((set, get) => ({
     await get().refresh();
     void get().loadReleases(false);
     void get().loadAppearance();
+    void api
+      .knownGameTags()
+      .then((knownGameTags) => set({ knownGameTags }))
+      .catch(() => undefined);
   },
 
   refresh: async () => {
@@ -111,6 +117,8 @@ export const useStore = create<Store>((set, get) => ({
     try {
       const releases = await api.listReleases(force);
       set({ releases, releasesLoading: false });
+      const knownGameTags = await api.knownGameTags().catch(() => get().knownGameTags);
+      set({ knownGameTags });
     } catch (error) {
       set({ releasesLoading: false, releasesError: String(error) });
     }

@@ -130,6 +130,7 @@ const ru = {
   "versions.subtitle":
     "Релизы Horizon с GitHub. Установленная версия запускается кнопкой «Играть».",
   "versions.empty": "Релизов пока нет.",
+  "versions.noAssets": "В этом релизе нет файлов для Windows — возможно, он собран для другой системы.",
   "versions.error": "Не удалось загрузить релизы.",
   "versions.retry": "Повторить",
   "versions.removeConfirm": "Удалить {tag}? Мир и настройки игры останутся.",
@@ -282,6 +283,7 @@ const en: Record<Key, string> = {
   "versions.subtitle":
     "Horizon releases from GitHub. The installed version starts with Play.",
   "versions.empty": "No releases yet.",
+  "versions.noAssets": "This release has no Windows files — it may be built for another system.",
   "versions.error": "Could not load releases.",
   "versions.retry": "Retry",
   "versions.removeConfirm": "Remove {tag}? Your worlds and options stay.",

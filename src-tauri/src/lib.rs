@@ -168,6 +168,7 @@ pub fn run() {
         .invoke_handler(tauri::generate_handler![
             bootstrap,
             list_releases,
+            releases::known_game_tags,
             install::install_release,
             install::uninstall_release,
             prepare::prepare,

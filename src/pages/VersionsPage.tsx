@@ -17,6 +17,13 @@ export function VersionsPage() {
   const remove = useStore((state) => state.remove);
   const select = useStore((state) => state.select);
   const prepare = useStore((state) => state.prepare);
+  const knownGameTags = useStore((state) => state.knownGameTags);
+
+  // Ocular tags its releases `vX.Y.Z` like the game; a tag never seen from Horizon before and
+  // missing its asset is the launcher's own release, not a game version.
+  const isLauncherRelease = (release: Release) =>
+    knownGameTags.length > 0 && !knownGameTags.includes(release.tag) && release.size === 0;
+  const shown = releases.filter((release) => !isLauncherRelease(release));
 
   const versions = boot?.versions ?? [];
   const selected = boot?.settings.selectedVersion;
@@ -59,16 +66,16 @@ export function VersionsPage() {
         </div>
       )}
 
-      {releases.length === 0 && !error && (
+      {shown.length === 0 && !error && (
         <div className="empty">{loading ? t("action.refresh") + "…" : t("versions.empty")}</div>
       )}
 
       <div className="release-list">
-        {releases.map((release) => {
+        {shown.map((release) => {
           const installed = versions.find((version) => version.tag === release.tag);
           const installing = op?.kind === "install" && op.tag === release.tag;
           const preparing = op?.kind === "prepare" && op.tag === release.tag;
-          const latest = releases[0]?.tag === release.tag;
+          const latest = shown[0]?.tag === release.tag;
 
           return (
             <article

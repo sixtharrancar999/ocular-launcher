@@ -4,6 +4,7 @@ import type { Appearance, Bootstrap, Release, Settings } from "./types";
 export const api = {
   bootstrap: () => invoke<Bootstrap>("bootstrap"),
   listReleases: (force = false) => invoke<Release[]>("list_releases", { force }),
+  knownGameTags: () => invoke<string[]>("known_game_tags"),
   installRelease: (tag: string) => invoke<void>("install_release", { tag }),
   uninstallRelease: (tag: string) => invoke<void>("uninstall_release", { tag }),
   prepare: (tag: string) => invoke<void>("prepare", { tag }),

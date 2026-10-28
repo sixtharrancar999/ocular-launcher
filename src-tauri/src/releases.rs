@@ -7,6 +7,9 @@ use serde::{Deserialize, Serialize};
 const REPO: &str = "horizon-rust/horizon";
 const CACHE_TTL_SECS: u64 = 600;
 
+/// Ocular's own releases (used only to hide the game's page instead of installing it).
+const LAUNCHER_REPO: &str = "sixtharrancar999/ocular-launcher";
+
 #[derive(Clone, Debug, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct Release {
@@ -30,6 +33,61 @@ pub fn is_game_tag(tag: &str) -> bool {
     tag.strip_prefix('v')
         .and_then(|rest| rest.chars().next())
         .is_some_and(|c| c.is_ascii_digit())
+}
+
+/// `cache/horizon-tags.json`: every game tag seen, so a tag that also exists in
+/// Ocular's own repository is never mistaken for a Horizon release.
+#[tauri::command]
+pub fn known_game_tags() -> Vec<String> {
+    std::fs::read_to_string(knowledge_path())
+        .ok()
+        .and_then(|text| serde_json::from_str::<Vec<String>>(&text).ok())
+        .unwrap_or_default()
+}
+
+fn knowledge_path() -> std::path::PathBuf {
+    crate::paths::cache_dir().join("horizon-tags.json")
+}
+
+fn remember_game_tags(tags: &[String]) {
+    let mut known = known_game_tags();
+    let mut changed = false;
+    for tag in tags {
+        if !known.contains(tag) {
+            known.push(tag.clone());
+            changed = true;
+        }
+    }
+    if changed {
+        if let Ok(text) = serde_json::to_string(&known) {
+            let _ = std::fs::write(knowledge_path(), text);
+        }
+    }
+}
+
+/// The tags of this repository's own releases (the launcher's, not Horizon's).
+async fn launcher_tags() -> Vec<String> {
+    let url = format!("https://api.github.com/repos/{LAUNCHER_REPO}/releases?per_page=100");
+    let Ok(response) = crate::util::client()
+        .get(&url)
+        .header("Accept", "application/vnd.github+json")
+        .send()
+        .await
+    else {
+        return Vec::new();
+    };
+    let Ok(value) = response.json::<serde_json::Value>().await else {
+        return Vec::new();
+    };
+    value
+        .as_array()
+        .map(|items| {
+            items
+                .iter()
+                .filter_map(|item| item["tag_name"].as_str().map(str::to_string))
+                .collect()
+        })
+        .unwrap_or_default()
 }
 
 pub fn validate_tag(tag: &str) -> Result<(), String> {
@@ -90,8 +148,11 @@ pub async fn fetch(force: bool) -> Result<Vec<Release>, String> {
         return Err("Неожиданный ответ GitHub: это не список релизов.".to_string());
     };
     let asset_name = crate::util::asset_name()?;
+    let own_tags: Vec<String> = launcher_tags().await;
+    let known: Vec<String> = known_game_tags();
 
     let mut releases = Vec::new();
+    let mut game_tags = Vec::new();
     for item in items {
         if item["draft"].as_bool().unwrap_or(false) {
             continue;
@@ -100,12 +161,20 @@ pub async fn fetch(force: bool) -> Result<Vec<Release>, String> {
         if !is_game_tag(tag) {
             continue;
         }
+        game_tags.push(tag.to_string());
         let Some(asset) = item["assets"]
             .as_array()
             .and_then(|assets| assets.iter().find(|asset| asset["name"].as_str() == Some(asset_name)))
         else {
             continue;
         };
+        // Ocular tags its own releases the same way; one that exists in both places is only
+        // the game's release when the game was seen publishing it.
+        let own = own_tags.iter().any(|own| own == tag)
+            && !known.iter().any(|seen| seen == tag);
+        if own {
+            continue;
+        }
         releases.push(Release {
             tag: tag.to_string(),
             name: item["name"].as_str().unwrap_or(tag).to_string(),
@@ -121,6 +190,7 @@ pub async fn fetch(force: bool) -> Result<Vec<Release>, String> {
     }
     releases.sort_by_key(|release| std::cmp::Reverse(version_key(&release.tag)));
 
+    remember_game_tags(&game_tags);
     write_cache(&releases);
     Ok(releases)
 }
