@@ -154,6 +154,7 @@ export function SkinSection() {
                 </button>
               ))}
             </div>
+            <p className="field-hint">{t("skin.modelHint")}</p>
           </div>
 
           <div className="field">

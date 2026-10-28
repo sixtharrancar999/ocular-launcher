@@ -1219,6 +1219,14 @@ select {
   image-rendering: pixelated;
 }
 
+.skin-canvas {
+  display: block;
+  width: 112px;
+  height: 238px;
+  image-rendering: pixelated;
+  filter: drop-shadow(0 10px 22px rgba(0, 0, 0, 0.55));
+}
+
 .figure {
   position: relative;
   width: 132px;

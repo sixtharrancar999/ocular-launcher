@@ -65,6 +65,14 @@ pub fn launch(app: &AppHandle, state: &AppState, tag: &str, settings: &Settings)
         command.arg(word);
     }
     command.env("HORIZON_HOME", &home);
+
+    // The game has no offline-skin support yet; the resource pack carries the local
+    // skin into vanilla's default player textures, so it shows in every world.
+    if !settings.nickname.is_empty() {
+        if let Err(error) = crate::skins::sync_resource_pack(&home, &settings.nickname) {
+            eprintln!("Ocular: could not install the local skin resource pack: {error}");
+        }
+    }
     command.stdout(Stdio::piped()).stderr(Stdio::piped());
     crate::util::quiet(&mut command);
 
