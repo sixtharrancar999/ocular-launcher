@@ -1,51 +1,63 @@
-# Roadmap Ocular Launcher
+# Ocular Launcher — roadmap
 
-Три пункта, без расширения scope. Microsoft OAuth не добавляем: лаунчер всегда работает под оффлайн-никнеймом.
+Three items, no scope creep. Microsoft OAuth is not planned: the launcher always plays under an
+offline nickname. That is the point of the project, not something to be fixed later.
 
-## 1. Автообновление игры и лаунчера
+## [x] 1. Game and launcher updates
 
-**Игра — готово.**
+**Game — done.**
 
-- При старте и раз в 30 минут лаунчер сверяет установленную версию с последним релизом `horizon-rust/horizon` (список уже кешируется на 10 минут).
-- Если вышла новая версия, на Play появляется баннер «Доступно обновление vX.Y.Z» с кнопкой.
-- Обновление: скачивание нового релиза (если он ещё не установлен), перенос уже подготовленных ресурсов из любой подходящей версии (hardlink, `adopt_resources`), выбор новой версии.
-- Если ресурсов нет ни у одной версии — обычная подготовка.
-- Откат: старая версия остаётся установленной, её можно выбрать на странице «Версии».
+- At start (and whenever the list refreshes) the launcher compares the installed version with the
+  newest release of `horizon-rust/horizon`; the list is cached for 10 minutes.
+- When a newer version is out, Play shows an "Update available" banner with a button.
+- Updating downloads the new release if needed, carries the already prepared resources over from
+  any matching version (hard links, `adopt_resources`) and selects the new version.
+- No prepared version anywhere means a normal preparation.
+- Rollback: the old version stays installed and can be picked on the Versions page.
 
-**Лаунчер — готово.**
+**Launcher — done.**
 
-- Проверка `https://github.com/sixtharrancar999/ocular-launcher/releases/latest/download/latest.json` при старте и по кнопке.
-- Баннер на Play и раздел «Обновления» в настройках; скачивание с прогрессом, проверка minisign-подписи, перезапуск.
-- Выпуск: тег `vX.Y.Z` → GitHub Actions собирает NSIS, подписывает и публикует релиз с `latest.json`.
-- Приватный ключ подписи хранится вне репозитория и в GitHub Secrets (`TAURI_SIGNING_PRIVATE_KEY`).
+- Checks `https://github.com/sixtharrancar999/ocular-launcher/releases/latest/download/latest.json`
+  at start and from the Settings button.
+- A banner on Play and an "Updates" panel in Settings; download with progress, minisign signature
+  check, restart.
+- Releasing: tag `vX.Y.Z` → GitHub Actions builds the NSIS installer, signs it and publishes the
+  release with `latest.json`.
+- The private signing key lives outside the repository and in GitHub Secrets
+  (`TAURI_SIGNING_PRIVATE_KEY`).
 
-## 2. Локальные скины
+## [x] 2. Local skins
 
-**Готово.**
+- The skin and cape are PNG files on this PC under
+  `%LOCALAPPDATA%\Ocular Launcher\game\skins\<nickname>\` (`skin.png`, `cape.png`, `model`);
+  nothing is downloaded from the network.
+- Settings → Appearance: a figure built from the texture, uploading a skin (file dialog or
+  drag-and-drop), the classic/slim choice, uploading and removing a cape, "restart the game to
+  apply".
+- Format checks: PNG 64×64 or 64×32 (skin), 64×32 / 22×17 / 46×22 (cape).
+- On launch the launcher passes `HORIZON_OFFLINE_SKIN`, `HORIZON_OFFLINE_SKIN_MODEL` and
+  `HORIZON_OFFLINE_CAPE`.
+- **While the 0.2.93 client does not read those variables**, the launcher writes the skin into the
+  prepared default player textures (`assets/minecraft/textures/entity/player/{wide,slim}`), keeping
+  the originals in `.ocular-skin-backup` for rollback. No resource pack, so the game never rebuilds
+  its 28 000-file overlay cache and does not show a long black screen on the first launch.
+  Side effect: other players with default skins look the same.
+- In 0.2.93 the arm model (classic/slim) is chosen by the client itself; the switch changes the
+  preview and will work in game once Horizon reads `HORIZON_OFFLINE_SKIN_MODEL`.
+- Appearance belongs to the nickname: change the name and you get its own look; change back and the
+  skin is still there.
 
-- Скин и плащ — PNG-файлы на ПК в `%LOCALAPPDATA%\Ocular Launcher\game\skins\<никнейм>\`
-  (`skin.png`, `cape.png`, `model`); ничего не скачивается из сети.
-- Настройки → «Внешность»: фигура из текстуры, загрузка скина (диалог или перетаскивание),
-  выбор модели classic/slim, загрузка и удаление плаща, «Перезапустите игру, чтобы применить».
-- Проверка формата: PNG 64×64 или 64×32 (скин), 64×32 / 22×17 / 46×22 (плащ).
-- При запуске лаунчер передаёт `HORIZON_OFFLINE_SKIN`, `HORIZON_OFFLINE_SKIN_MODEL`, `HORIZON_OFFLINE_CAPE`.
-- **Пока клиент 0.2.93 не читает эти переменные**, лаунчер подменяет дефолтные текстуры игрока
-  прямо в подготовленных ресурсах (`assets/minecraft/textures/entity/player/{wide,slim}`),
-  сохраняя оригиналы в `.ocular-skin-backup` для отката. Никакого ресурспака — значит нет
-  пересборки кэша на 28 тысяч файлов и долгого чёрного экрана при первом запуске.
-  Побочный эффект: другие игроки с дефолтным скином выглядят так же.
-- Модель рук (classic/slim) в 0.2.93 задаёт сам клиент; переключатель влияет на превью
-  и заработает в игре, когда Horizon начнёт читать `HORIZON_OFFLINE_SKIN_MODEL`.
-- Внешность привязана к никнейму: сменил ник — своя внешность; вернул — его скин на месте.
+## [ ] 3. Instances
 
-## 3. Инстансы
+- An instance is its own `HORIZON_HOME` folder with its own worlds, `options.txt`, screenshots and
+  launch settings.
+- Creating an empty instance, copying an existing one (without logs or caches), renaming, deleting
+  to the trash.
+- Choosing the instance on Play; the last choice is remembered.
+- Every instance has its own nickname and skin (through the skin system).
+- Instances leave the main `game/` alone: it stays the first instance.
 
-- Инстанс = отдельная папка `HORIZON_HOME` со своими мирами, `options.txt`, скриншотами и настройками запуска.
-- Создание пустого инстанса, копирование существующего (без логов и кешей), переименование, удаление в корзину.
-- Выбор инстанса на Play; последний выбранный запоминается.
-- У каждого инстанса свой никнейм и скин (в рамках системы скинов).
-- Инстансы не трогают основной `game/`: он остаётся первым инстансом, как в оригинальном лаунчере.
+## Out of scope
 
-## Вне scope
-
-Microsoft OAuth и онлайн-аккаунты, моды и модпаки, хостинг серверов, macOS/Linux-сборки, телеметрия.
+Microsoft OAuth and online accounts, mods and modpacks, server hosting, macOS/Linux builds,
+telemetry.
