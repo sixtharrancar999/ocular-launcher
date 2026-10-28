@@ -4,6 +4,7 @@ import { relaunch } from "@tauri-apps/plugin-process";
 import { api } from "./api";
 import { translate, resolveLang } from "./i18n";
 import type {
+  Appearance,
   Bootstrap,
   LogLine,
   Operation,
@@ -35,6 +36,10 @@ interface Store {
   launcherUpdateDownloading: boolean;
   launcherUpdateProgress: number;
   launcherUpdateError: string | null;
+  appearance: Appearance | null;
+  appearanceSource: string | null;
+  appearanceCapeSource: string | null;
+  appearanceBusy: boolean;
 
   setPage: (page: Page) => void;
   setConsoleOpen: (open: boolean) => void;
@@ -51,6 +56,11 @@ interface Store {
   saveSettings: (settings: Settings) => Promise<void>;
   checkLauncherUpdate: (manual?: boolean) => Promise<void>;
   installLauncherUpdate: () => Promise<void>;
+  loadAppearance: () => Promise<void>;
+  updateAppearance: (
+    action: (bridge: typeof import("./api").api) => Promise<unknown>,
+    successMessage?: string,
+  ) => Promise<void>;
   pushLog: (stream: LogLine["stream"], text: string) => void;
   clearLogs: () => void;
   showToast: (kind: Toast["kind"], text: string) => void;
@@ -73,6 +83,10 @@ export const useStore = create<Store>((set, get) => ({
   launcherUpdateDownloading: false,
   launcherUpdateProgress: 0,
   launcherUpdateError: null,
+  appearance: null,
+  appearanceSource: null,
+  appearanceCapeSource: null,
+  appearanceBusy: false,
 
   setPage: (page) => set({ page }),
   setConsoleOpen: (consoleOpen) => set({ consoleOpen }),
@@ -80,6 +94,7 @@ export const useStore = create<Store>((set, get) => ({
   init: async () => {
     await get().refresh();
     void get().loadReleases(false);
+    void get().loadAppearance();
   },
 
   refresh: async () => {
@@ -215,9 +230,51 @@ export const useStore = create<Store>((set, get) => ({
     try {
       await api.saveSettings(settings);
       await get().refresh();
+      await get().loadAppearance();
       get().showToast("success", translate(currentLang(get()), "settings.saved"));
     } catch (error) {
       get().showToast("error", String(error));
+    }
+  },
+
+  loadAppearance: async () => {
+    try {
+      const appearance = await api.appearanceGet();
+      let source: string | null = null;
+      let cape: string | null = null;
+      if (appearance.skin) {
+        source = await api.appearanceSource(appearance.nickname);
+      }
+      if (appearance.cape) {
+        cape = await api.capeSource();
+      }
+      set({
+        appearance,
+        appearanceSource: source,
+        appearanceCapeSource: cape,
+      });
+    } catch (error) {
+      set({
+        appearance: null,
+        appearanceSource: null,
+        appearanceCapeSource: null,
+      });
+      get().pushLog("launcher", String(error));
+    }
+  },
+
+  updateAppearance: async (action, successMessage) => {
+    set({ appearanceBusy: true });
+    try {
+      await action(api);
+      await get().loadAppearance();
+      if (successMessage) {
+        get().showToast("success", successMessage);
+      }
+    } catch (error) {
+      get().showToast("error", String(error));
+    } finally {
+      set({ appearanceBusy: false });
     }
   },
 

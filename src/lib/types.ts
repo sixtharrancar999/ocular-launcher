@@ -54,3 +54,18 @@ export interface Toast {
   kind: "error" | "success" | "info";
   text: string;
 }
+
+export interface SkinInfo {
+  width: number;
+  height: number;
+  modifiedMs: number;
+}
+
+export interface Appearance {
+  nickname: string;
+  directory: string;
+  skin: SkinInfo | null;
+  cape: SkinInfo | null;
+  model: "classic" | "slim" | string;
+  needsRestart: boolean;
+}

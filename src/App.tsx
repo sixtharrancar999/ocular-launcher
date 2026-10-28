@@ -151,6 +151,10 @@ export default function App() {
         useStore.getState().showToast("error", payload.message);
       });
 
+      await registerOne<null>("appearance-changed", () => {
+        void useStore.getState().loadAppearance();
+      });
+
       await registerOne<null>("state-changed", () => {
         scheduleRefresh();
       });

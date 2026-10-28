@@ -8,6 +8,7 @@ mod paths;
 mod prepare;
 mod releases;
 mod settings;
+mod skins;
 mod state;
 mod util;
 
@@ -162,6 +163,7 @@ pub fn run() {
     tauri::Builder::default()
         .plugin(tauri_plugin_updater::Builder::new().build())
         .plugin(tauri_plugin_process::init())
+        .plugin(tauri_plugin_dialog::init())
         .manage(AppState::default())
         .invoke_handler(tauri::generate_handler![
             bootstrap,
@@ -176,6 +178,18 @@ pub fn run() {
             select_version,
             reveal,
             open_external,
+            skins::appearance_get,
+            skins::appearance_source,
+            skins::cape_source,
+            skins::skin_set_from_file,
+            skins::skin_set_from_bytes,
+            skins::skin_model_set,
+            skins::cape_set_from_file,
+            skins::cape_set_from_bytes,
+            skins::cape_clear,
+            skins::appearance_reset,
+            skins::appearance_reveal,
+            skins::skins_folder,
         ])
         .run(tauri::generate_context!())
         .expect("error while running Ocular Launcher");

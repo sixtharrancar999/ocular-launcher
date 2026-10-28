@@ -53,6 +53,14 @@ pub fn launch(app: &AppHandle, state: &AppState, tag: &str, settings: &Settings)
     if !settings.nickname.is_empty() {
         command.arg("--name").arg(&settings.nickname);
     }
+    if let Some(skin) = crate::skins::appearance_for(&home, &settings.nickname) {
+        command.env("HORIZON_OFFLINE_SKIN", &skin.skin);
+        command.env("HORIZON_OFFLINE_SKIN_MODEL", &skin.model);
+        if let Some(cape) = &skin.cape {
+            command.env("HORIZON_OFFLINE_CAPE", cape);
+        }
+        crate::skins::remember_fingerprint(&home, &settings.nickname, &skin.fingerprint);
+    }
     for word in settings.extra_args.split_whitespace() {
         command.arg(word);
     }

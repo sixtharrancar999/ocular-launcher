@@ -1,5 +1,5 @@
 import { invoke } from "@tauri-apps/api/core";
-import type { Bootstrap, Release, Settings } from "./types";
+import type { Appearance, Bootstrap, Release, Settings } from "./types";
 
 export const api = {
   bootstrap: () => invoke<Bootstrap>("bootstrap"),
@@ -14,4 +14,17 @@ export const api = {
   selectVersion: (tag: string) => invoke<void>("select_version", { tag }),
   reveal: (kind: string, tag?: string) => invoke<void>("reveal", { kind, tag: tag ?? null }),
   openExternal: (url: string) => invoke<void>("open_external", { url }),
+
+  appearanceGet: () => invoke<Appearance>("appearance_get"),
+  appearanceSource: (nickname: string) => invoke<string>("appearance_source", { nickname }),
+  capeSource: () => invoke<string | null>("cape_source"),
+  skinSetFromFile: (path: string) => invoke<void>("skin_set_from_file", { path }),
+  skinSetFromBytes: (bytes: number[]) => invoke<void>("skin_set_from_bytes", { bytes }),
+  skinModelSet: (model: string) => invoke<void>("skin_model_set", { model }),
+  capeSetFromFile: (path: string) => invoke<void>("cape_set_from_file", { path }),
+  capeSetFromBytes: (bytes: number[]) => invoke<void>("cape_set_from_bytes", { bytes }),
+  capeClear: () => invoke<void>("cape_clear"),
+  appearanceReset: () => invoke<void>("appearance_reset"),
+  appearanceReveal: () => invoke<void>("appearance_reveal"),
+  skinsFolder: () => invoke<void>("skins_folder"),
 };

@@ -4,6 +4,7 @@ import { api } from "../lib/api";
 import { useStore } from "../lib/store";
 import { IconFolder, IconRefresh } from "../components/Icons";
 import { Progress } from "../components/Progress";
+import { SkinSection } from "../components/SkinSection";
 import type { Settings } from "../lib/types";
 
 export function SettingsPage() {
@@ -76,6 +77,8 @@ export function SettingsPage() {
           <p className="field-hint">{t("settings.nicknameHint")}</p>
         </div>
       </section>
+
+      <SkinSection />
 
       <section className="panel">
         <h3 className="panel-title">{t("settings.game")}</h3>
@@ -248,8 +251,7 @@ export function SettingsPage() {
         <button className="btn btn-primary" onClick={() => void saveSettings(form)}>
           {t("settings.save")}
         </button>
-      </div>
-    </div>
+      </div>    </div>
   );
 }
 

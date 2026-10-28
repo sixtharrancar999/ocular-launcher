@@ -14,6 +14,7 @@
     "core:window:allow-is-maximized",
     "core:window:allow-set-focus",
     "updater:default",
-    "process:default"
+    "process:default",
+    "dialog:allow-open"
   ]
 }
