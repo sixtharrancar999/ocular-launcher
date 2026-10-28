@@ -32,6 +32,7 @@ interface Store {
   loadReleases: (force?: boolean) => Promise<void>;
   install: (tag?: string) => Promise<void>;
   prepare: (tag: string, playAfter?: boolean) => Promise<void>;
+  updateGame: (tag: string) => Promise<void>;
   play: () => Promise<void>;
   stop: () => Promise<void>;
   remove: (tag: string) => Promise<void>;
@@ -122,6 +123,32 @@ export const useStore = create<Store>((set, get) => ({
     }
   },
 
+  updateGame: async (tag) => {
+    const installed = get().boot?.versions.find((version) => version.tag === tag);
+    set({
+      op: installed
+        ? { kind: "prepare", tag, stage: "copy-resources" }
+        : { kind: "install", tag, stage: "download", received: 0, total: 0 },
+      consoleOpen: true,
+    });
+    try {
+      if (!installed) {
+        await api.installRelease(tag);
+      }
+      set({ op: { kind: "prepare", tag, stage: "copy-resources" } });
+      await api.adoptResources(tag);
+      await api.selectVersion(tag);
+      await get().refresh();
+      get().showToast("success", translate(currentLang(get()), "toast.updated", { tag }));
+    } catch (error) {
+      get().showToast("error", String(error));
+      get().pushLog("launcher", String(error));
+    } finally {
+      set({ op: null });
+      await get().refresh();
+    }
+  },
+
   play: async () => {
     set({ op: null });
     try {
@@ -194,6 +221,28 @@ export const useStore = create<Store>((set, get) => ({
 
 function currentLang(state: Store) {
   return resolveLang(state.boot?.settings.language ?? "system");
+}
+
+/** `v0.2.93` → `[0, 2, 93]`, for comparing release tags. */
+export function versionKey(tag: string): number[] {
+  return tag
+    .replace(/^v/, "")
+    .split(".")
+    .map((part) => Number.parseInt(part, 10) || 0);
+}
+
+export function isNewer(candidate: string, current: string): boolean {
+  const left = versionKey(candidate);
+  const right = versionKey(current);
+  const length = Math.max(left.length, right.length);
+  for (let index = 0; index < length; index += 1) {
+    const a = left[index] ?? 0;
+    const b = right[index] ?? 0;
+    if (a !== b) {
+      return a > b;
+    }
+  }
+  return false;
 }
 
 /** The version Play would start: the selected one when installed, else the newest. */

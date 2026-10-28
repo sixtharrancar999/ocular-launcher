@@ -1,7 +1,7 @@
 import type { ReactNode } from "react";
 import { useI18n } from "../lib/i18n";
 import { api } from "../lib/api";
-import { activeVersion, useStore } from "../lib/store";
+import { activeVersion, isNewer, useStore } from "../lib/store";
 import { Iris } from "../components/Iris";
 import { Progress, formatBytes } from "../components/Progress";
 import {
@@ -23,6 +23,7 @@ export function PlayPage() {
   const releasesError = useStore((state) => state.releasesError);
   const install = useStore((state) => state.install);
   const prepare = useStore((state) => state.prepare);
+  const updateGame = useStore((state) => state.updateGame);
   const play = useStore((state) => state.play);
   const stop = useStore((state) => state.stop);
   const setPage = useStore((state) => state.setPage);
@@ -32,6 +33,9 @@ export function PlayPage() {
   const running = Boolean(boot?.runningTag);
   const busy = op !== null;
   const latest = releases[0];
+  const updateAvailable = Boolean(
+    latest && version && isNewer(latest.tag, version.tag),
+  );
 
   const primaryDisabled = running
     ? false
@@ -109,6 +113,25 @@ export function PlayPage() {
 
   return (
     <div className="play-page">
+      {updateAvailable && latest && !running && (
+        <section className="update-banner">
+          <div className="update-text">
+            <span className="update-title">{t("update.title")}</span>
+            <span className="update-sub">
+              {version?.tag} → {latest.tag}
+            </span>
+          </div>
+          <button
+            className="btn btn-primary btn-small"
+            onClick={() => void updateGame(latest.tag)}
+            disabled={busy}
+          >
+            <IconDownload size={16} />
+            {t("update.action")}
+          </button>
+        </section>
+      )}
+
       <section className="hero">
         <Iris className="hero-iris" />
         <div className="hero-content">
@@ -259,6 +282,8 @@ export function prepareStageLabel(stage: string): string {
       return "horizon-prepare";
     case "sounds":
       return "Звуки";
+    case "copy-resources":
+      return "Перенос ресурсов";
     case "done":
       return "Готово";
     default:

@@ -117,6 +117,26 @@ pub fn installed(tag: &str) -> bool {
     installed_client(tag).is_file()
 }
 
+/// Installed release tags, newest first. Entries starting with `.` are staging folders.
+pub fn installed_tags() -> Vec<String> {
+    let mut tags = Vec::new();
+    let Ok(entries) = std::fs::read_dir(versions_dir()) else {
+        return tags;
+    };
+    for entry in entries.flatten() {
+        if !entry.path().is_dir() {
+            continue;
+        }
+        let tag = entry.file_name().to_string_lossy().into_owned();
+        if tag.starts_with('.') || !installed(&tag) {
+            continue;
+        }
+        tags.push(tag);
+    }
+    tags.sort_by_key(|tag| std::cmp::Reverse(crate::releases::version_key(tag)));
+    tags
+}
+
 /// The official launcher's game folder, when it exists.
 pub fn default_minecraft_dir() -> Option<PathBuf> {
     candidate_minecraft_dirs().into_iter().find(|dir| dir.is_dir())

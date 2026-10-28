@@ -7,6 +7,7 @@ export const api = {
   installRelease: (tag: string) => invoke<void>("install_release", { tag }),
   uninstallRelease: (tag: string) => invoke<void>("uninstall_release", { tag }),
   prepare: (tag: string) => invoke<void>("prepare", { tag }),
+  adoptResources: (to: string) => invoke<string | null>("adopt_resources", { to }),
   launch: () => invoke<void>("launch_game"),
   stop: () => invoke<void>("stop_game"),
   saveSettings: (settings: Settings) => invoke<void>("save_settings", { settings }),

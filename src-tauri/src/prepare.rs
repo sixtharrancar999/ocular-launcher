@@ -82,6 +82,80 @@ pub async fn prepare(
     result
 }
 
+/// Carries a prepared `.local` folder from another installed version of the same
+/// Minecraft release, so updating Horizon does not prepare everything again.
+#[tauri::command]
+pub async fn adopt_resources(app: AppHandle, to: String) -> Result<Option<String>, String> {
+    crate::releases::validate_tag(&to)?;
+    if crate::paths::resources_ready(&to) {
+        return Ok(None);
+    }
+    let to_dir = crate::paths::version_dir(&to);
+    if !to_dir.is_dir() {
+        return Err("Сначала установите версию.".to_string());
+    }
+    let to_mc = crate::paths::minecraft_version(&to_dir);
+    let selected = Settings::load().selected_version;
+
+    let mut candidates: Vec<String> = crate::paths::installed_tags()
+        .into_iter()
+        .filter(|tag| tag != &to)
+        .filter(|tag| {
+            crate::paths::minecraft_version(&crate::paths::version_dir(tag)) == to_mc
+        })
+        .filter(|tag| crate::paths::resources_ready(tag))
+        .collect();
+    // The version the player is on is the most likely source; then the others.
+    candidates.sort_by_key(|tag| if Some(tag) == selected.as_ref() { 0 } else { 1 });
+
+    let Some(source) = candidates.into_iter().next() else {
+        return Ok(None);
+    };
+    log(
+        &app,
+        "prepare",
+        format!("Переношу подготовленные ресурсы из {source}…"),
+    );
+
+    let from = crate::paths::version_dir(&source).join(".local");
+    let destination = to_dir.join(".local");
+    let destination_for_task = destination.clone();
+    tauri::async_runtime::spawn_blocking(move || copy_tree(&from, &destination_for_task))
+        .await
+        .map_err(|e| format!("Перенос ресурсов прервался: {e}"))??;
+
+    if !crate::paths::resources_ready(&to) {
+        return Err("Ресурсы скопированы, но манифест не найден.".to_string());
+    }
+    log(
+        &app,
+        "prepare",
+        format!("Ресурсы перенесены из {source}, повторная подготовка не нужна."),
+    );
+    let _ = app.emit("state-changed", ());
+    Ok(Some(source))
+}
+
+/// Hardlinks files when the volume allows it, copies otherwise; existing files win.
+fn copy_tree(from: &Path, to: &Path) -> Result<(), String> {
+    std::fs::create_dir_all(to).map_err(|e| e.to_string())?;
+    let entries = std::fs::read_dir(from).map_err(|e| e.to_string())?;
+    for entry in entries {
+        let entry = entry.map_err(|e| e.to_string())?;
+        let source = entry.path();
+        let destination = to.join(entry.file_name());
+        let file_type = entry.file_type().map_err(|e| e.to_string())?;
+        if file_type.is_dir() {
+            copy_tree(&source, &destination)?;
+        } else if file_type.is_file() && !destination.exists() {
+            if std::fs::hard_link(&source, &destination).is_err() {
+                std::fs::copy(&source, &destination).map_err(|e| e.to_string())?;
+            }
+        }
+    }
+    Ok(())
+}
+
 async fn prepare_inner(app: &AppHandle, tag: &str) -> Result<(), String> {
     let version_dir = crate::paths::version_dir(tag);
     if !version_dir.is_dir() {
@@ -495,4 +569,46 @@ fn emit_stage(app: &AppHandle, stage: &str) {
             total: 0,
         },
     );
+}
+
+#[cfg(test)]
+mod tests {
+    use super::copy_tree;
+    use std::path::PathBuf;
+    use std::time::{SystemTime, UNIX_EPOCH};
+
+    fn temp_dir(name: &str) -> PathBuf {
+        let unique = format!(
+            "ocular-{name}-{}-{}",
+            std::process::id(),
+            SystemTime::now()
+                .duration_since(UNIX_EPOCH)
+                .unwrap()
+                .as_nanos()
+        );
+        let dir = std::env::temp_dir().join(unique);
+        std::fs::create_dir_all(&dir).unwrap();
+        dir
+    }
+
+    #[test]
+    fn copies_a_tree_and_keeps_existing_files() {
+        let base = temp_dir("copy-resources");
+        let from = base.join("from");
+        let to = base.join("to");
+        std::fs::create_dir_all(from.join("nested")).unwrap();
+        std::fs::write(from.join("a.txt"), "one").unwrap();
+        std::fs::write(from.join("nested/b.txt"), "two").unwrap();
+        std::fs::create_dir_all(&to).unwrap();
+        std::fs::write(to.join("a.txt"), "keep").unwrap();
+
+        copy_tree(&from, &to).unwrap();
+
+        assert_eq!(std::fs::read_to_string(to.join("a.txt")).unwrap(), "keep");
+        assert_eq!(
+            std::fs::read_to_string(to.join("nested/b.txt")).unwrap(),
+            "two"
+        );
+        let _ = std::fs::remove_dir_all(&base);
+    }
 }

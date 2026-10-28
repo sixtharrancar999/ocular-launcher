@@ -167,6 +167,7 @@ pub fn run() {
             install::install_release,
             install::uninstall_release,
             prepare::prepare,
+            prepare::adopt_resources,
             launch_game,
             stop_game,
             save_settings,

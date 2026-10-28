@@ -1,6 +1,6 @@
 [package]
 name = "ocular-launcher"
-version = "0.1.0"
+version = "0.1.1"
 description = "Ocular Launcher — a launcher for Horizon"
 authors = ["Ocular"]
 edition = "2021"

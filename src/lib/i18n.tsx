@@ -53,6 +53,8 @@ const ru = {
   "hero.hint.noReleases": "Не удалось получить список релизов. Проверьте интернет и обновите.",
   "hero.hint.busy": "Дождитесь завершения операции.",
   "hero.hint.needVersion": "Установите версию Horizon, чтобы начать.",
+  "update.title": "Доступно обновление",
+  "update.action": "Обновить",
 
   "settings.title": "Настройки",
   "settings.subtitle": "Лаунчер, аккаунт и папки.",
@@ -106,6 +108,7 @@ const ru = {
   "toast.exitedOk": "Игра закрыта",
   "toast.removed": "{tag} удалена",
   "toast.selected": "Выбрана {tag}",
+  "toast.updated": "Обновлено до {tag}",
   "toast.copied": "Скопировано",
 } as const;
 
@@ -164,6 +167,8 @@ const en: Record<Key, string> = {
   "hero.hint.noReleases": "Could not load releases. Check your connection and refresh.",
   "hero.hint.busy": "Wait for the current operation to finish.",
   "hero.hint.needVersion": "Install a Horizon version to begin.",
+  "update.title": "Update available",
+  "update.action": "Update",
 
   "settings.title": "Settings",
   "settings.subtitle": "Launcher, account and folders.",
@@ -217,6 +222,7 @@ const en: Record<Key, string> = {
   "toast.exitedOk": "Game closed",
   "toast.removed": "{tag} removed",
   "toast.selected": "{tag} selected",
+  "toast.updated": "Updated to {tag}",
   "toast.copied": "Copied",
 };
 
