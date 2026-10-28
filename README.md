@@ -6,9 +6,9 @@ Ocular ставит релизы Horizon с GitHub, готовит ресурс�
 
 ![Play](docs/screenshots/play.png)
 
-| Игра | Версии |
-| --- | --- |
-| ![Game](docs/screenshots/game.png) | ![Versions](docs/screenshots/versions.png) |
+| Игра | Внешность | Версии |
+| --- | --- | --- |
+| ![Game](docs/screenshots/game.png) | ![Skin](docs/screenshots/skin.png) | ![Versions](docs/screenshots/versions.png) |
 
 ## Что уже работает (MVP)
 
