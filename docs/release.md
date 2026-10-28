@@ -57,6 +57,27 @@
    и создаст релиз с `latest.json`. Через несколько минут он появится на странице
    **Releases**; установленные лаунчеры увидят его при следующей проверке.
 
+## Ручной способ (без Actions)
+
+Если Actions недоступен, соберите и загрузите файлы сами:
+
+```powershell
+cd "C:\Vibe\Project Ocular Launcher\Ocular Launcher"
+$env:Path = "$env:USERPROFILE\.cargo\bin;$env:Path"
+$env:TAURI_SIGNING_PRIVATE_KEY = "$env:USERPROFILE\.tauri\ocular-launcher.key"
+npm run tauri build
+```
+
+Получите `src-tauri\target\release\bundle\nsis\Ocular Launcher_X.Y.Z_x64-setup.exe` и `.sig`,
+затем на GitHub: **Releases → Draft a new release → Choose a tag → создать `vX.Y.Z`**,
+приложить `.exe` и `.sig`, опубликовать. Файл `latest.json` при ручной загрузке нужно
+положить в релиз вручную (Actions делает это сам).
+
+## Обновление самой игры
+
+Версии Horizon берутся из `horizon-rust/horizon`, это отдельный канал: после выхода
+новой версии игры лаунчер предложит обновление сам.
+
 ## Как это работает
 
 - Лаунчер запрашивает
