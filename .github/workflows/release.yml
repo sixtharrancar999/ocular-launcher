@@ -44,5 +44,6 @@ jobs:
           releaseBody: "Ocular Launcher v__VERSION__. Установщик Windows и latest.json для самообновления."
           releaseDraft: false
           prerelease: false
-          includeUpdaterJson: true
+          uploadUpdaterJson: true
+          updaterJsonPreferNsis: true
           args: --bundles nsis

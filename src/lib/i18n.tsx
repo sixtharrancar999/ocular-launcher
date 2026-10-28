@@ -65,7 +65,7 @@ const ru = {
   "settings.account": "Аккаунт",
   "settings.nickname": "Никнейм",
   "settings.nicknameHint":
-    "Оффлайн-имя для игры: 3–16 латинских букв, цифр или _. Вход Microsoft добавим позже.",
+    "Оффлайн-имя для игры: 3–16 латинских букв, цифр или _. Вход Microsoft не планируется.",
   "settings.game": "Игра",
   "settings.minecraftDir": "Папка Minecraft",
   "settings.minecraftDirHint":
@@ -190,7 +190,7 @@ const en: Record<Key, string> = {
   "settings.account": "Account",
   "settings.nickname": "Nickname",
   "settings.nicknameHint":
-    "The offline name the game plays as: 3–16 letters, digits or _. Microsoft sign-in comes later.",
+    "The offline name the game plays as: 3–16 letters, digits or _. Microsoft sign-in is not planned.",
   "settings.game": "Game",
   "settings.minecraftDir": "Minecraft folder",
   "settings.minecraftDirHint":

@@ -101,6 +101,7 @@ Ocular Launcher/
 - Приватный ключ — `%USERPROFILE%\.tauri\ocular-launcher.key`; в репозиторий он не попадает. Его содержимое нужно добавить в GitHub → **Settings → Secrets and variables → Actions** как `TAURI_SIGNING_PRIVATE_KEY`.
 - Выпуск версии: поднять версию в `package.json`, `src-tauri/Cargo.toml`, `src-tauri/tauri.conf.json`, закоммитить, поставить тег `vX.Y.Z` и запушить его. GitHub Actions соберёт NSIS-установщик, подпишет его, создаст релиз и `latest.json`.
 - Приватный ключ нужно сохранить: без него нельзя подписать следующие обновления. Уже установленные копии продолжат работать.
+- Пошаговая инструкция по первому релизу и секретам: [docs/release.md](docs/release.md).
 
 ## Roadmap
 
